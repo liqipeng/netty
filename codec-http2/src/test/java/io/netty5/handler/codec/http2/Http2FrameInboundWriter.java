@@ -23,6 +23,7 @@ import io.netty5.channel.Channel;
 import io.netty5.channel.ChannelHandler;
 import io.netty5.channel.ChannelHandlerContext;
 import io.netty5.channel.ChannelPipeline;
+import io.netty5.channel.ChannelShutdownDirection;
 import io.netty5.channel.embedded.EmbeddedChannel;
 import io.netty5.util.Attribute;
 import io.netty5.util.AttributeKey;
@@ -163,6 +164,12 @@ final class Http2FrameInboundWriter {
         }
 
         @Override
+        public ChannelHandlerContext fireChannelShutdown(ChannelShutdownDirection direction) {
+            channel.pipeline().fireChannelShutdown(direction);
+            return this;
+        }
+
+        @Override
         public ChannelHandlerContext fireExceptionCaught(Throwable cause) {
             channel.pipeline().fireExceptionCaught(cause);
             return this;
@@ -252,6 +259,11 @@ final class Http2FrameInboundWriter {
         @Override
         public Future<Void> close() {
             return channel.close();
+        }
+
+        @Override
+        public Future<Void> shutdown(ChannelShutdownDirection direction) {
+            return channel.shutdown(direction);
         }
 
         @Override

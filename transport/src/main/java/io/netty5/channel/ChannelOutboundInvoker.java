@@ -89,6 +89,25 @@ public interface ChannelOutboundInvoker {
     Future<Void> close();
 
     /**
+     * Request shutdown one direction of the {@link Channel} and notify the {@link Future} once the operation completes,
+     * either because the operation was successful or because of an error.
+     * <p>
+     * After it the direction was shutdown it either will not produce any inbound data anymore or it will not be
+     * possible to write data anymore (depending on the {@link ChannelShutdownDirection} that was given).
+     * <p>
+     * Depending on the transport implementation shutting down the {@link ChannelShutdownDirection#Outbound}
+     * or {@link ChannelShutdownDirection#Inbound} might also result in data transferred over the network. Like for
+     * example in case of TCP shutting down the {@link ChannelShutdownDirection#Outbound} will result in a {@code FIN}
+     * that is transmitted to the remote peer that will as a result shutdown {@link ChannelShutdownDirection#Inbound}.
+     * <p>
+     * This will result in having the
+     * {@link ChannelHandler#shutdown(ChannelHandlerContext, ChannelShutdownDirection)}.
+     * method called of the next {@link ChannelHandler} contained in the {@link ChannelPipeline} of the
+     * {@link Channel}.
+     */
+    Future<Void> shutdown(ChannelShutdownDirection direction);
+
+    /**
      * Request to register on the {@link EventExecutor} for I/O processing.
      * {@link Future} once the operation completes, either because the operation was successful or because of
      * an error.

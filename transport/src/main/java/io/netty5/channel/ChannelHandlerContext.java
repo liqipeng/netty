@@ -159,6 +159,9 @@ public interface ChannelHandlerContext extends AttributeMap, ChannelInboundInvok
     ChannelHandlerContext fireChannelInactive();
 
     @Override
+    ChannelHandlerContext fireChannelShutdown(ChannelShutdownDirection direction);
+
+    @Override
     ChannelHandlerContext fireExceptionCaught(Throwable cause);
 
     @Override
