@@ -374,6 +374,7 @@ public class PooledByteBufAllocator extends AbstractByteBufAllocator implements 
     protected ByteBuf newHeapBuffer(int initialCapacity, int maxCapacity) {
         PoolThreadCache cache = threadCache.get();
         PoolArena<byte[]> heapArena = cache.heapArena;
+        // 首先获取当前线程的缓存对象 cache，其中包含了一个或多个 PoolArena 对象，每个 PoolArena 对象对应一个内存池，用于分配不同大小的内存块，从缓存中获取一个 HeapArena 对象，该对象对应着一个基于堆的内存池。
 
         final ByteBuf buf;
         if (heapArena != null) {
@@ -383,13 +384,29 @@ public class PooledByteBufAllocator extends AbstractByteBufAllocator implements 
                     new UnpooledUnsafeHeapByteBuf(this, initialCapacity, maxCapacity) :
                     new UnpooledHeapByteBuf(this, initialCapacity, maxCapacity);
         }
+        // 接着，代码尝试从 HeapArena 中分配一个大小为 initialCapacity 且最大容量为 maxCapacity 的内存块。如果 HeapArena 为空，则根据操作系统是否支持 Unsafe 类来创建一个新的 UnpooledHeapByteBuf 或 UnpooledUnsafeHeapByteBuf 对象。
 
         return toLeakAwareBuffer(buf);
+        // 最后，将返回的 ByteBuf 包装成一个 LeakAwareByteBuf 对象，该对象用于检测内存泄漏并在必要时打印警告日志。
     }
 
     @Override
     protected ByteBuf newDirectBuffer(int initialCapacity, int maxCapacity) {
         PoolThreadCache cache = threadCache.get();
+        // threadCache.get() :
+        //   threadCache 类型：io.netty.buffer.PooledByteBufAllocator.PoolThreadLocalCache
+        //                    继承自io.netty.util.concurrent.FastThreadLocal
+        // get方法处理流程：
+        //   io.netty.util.concurrent.FastThreadLocal.get()
+        //     -> io.netty.util.internal.InternalThreadLocalMap.get
+        //       -> io.netty.util.internal.InternalThreadLocalMap.slowGet
+        //         -> ret = new InternalThreadLocalMap();
+        //           -> indexedVariables = newIndexedVariableTable();
+        //             -> Object[] array = new Object[INDEXED_VARIABLE_TABLE_INITIAL_SIZE]; // INDEXED_VARIABLE_TABLE_INITIAL_SIZE=32
+        //         -> slowThreadLocalMap.set(ret);
+        //         -> return ret;
+        //     -> Object v = threadLocalMap.indexedVariable(index);
+        //     -> io.netty.util.concurrent.FastThreadLocal.initialize
         PoolArena<ByteBuffer> directArena = cache.directArena;
 
         final ByteBuf buf;

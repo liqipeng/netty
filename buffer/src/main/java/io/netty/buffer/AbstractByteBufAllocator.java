@@ -163,7 +163,7 @@ public abstract class AbstractByteBufAllocator implements ByteBufAllocator {
     @Override
     public ByteBuf heapBuffer(int initialCapacity, int maxCapacity) {
         if (initialCapacity == 0 && maxCapacity == 0) {
-            return emptyBuf;
+            return emptyBuf; // emptyBuf 有一个专用的类型：io.netty.buffer.EmptyByteBuf
         }
         validate(initialCapacity, maxCapacity);
         return newHeapBuffer(initialCapacity, maxCapacity);
