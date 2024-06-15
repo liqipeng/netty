@@ -139,7 +139,10 @@ public abstract class AbstractNioByteChannel extends AbstractNioChannel {
                 return;
             }
             final ChannelPipeline pipeline = pipeline();
+            // #1. 获取  池化内存缓冲区分配器
+            //     默认是 PooledByteBufAllocator
             final ByteBufAllocator allocator = config.getAllocator();
+            // #2. 获取  缓冲区大小预测器
             final RecvByteBufAllocator.Handle allocHandle = recvBufAllocHandle();
             allocHandle.reset(config);
 
@@ -147,7 +150,22 @@ public abstract class AbstractNioByteChannel extends AbstractNioChannel {
             boolean close = false;
             try {
                 do {
+                    // #3. 分配出一块内存 byteBuf
                     byteBuf = allocHandle.allocate(allocator);
+                    // 跟踪：
+                    // io.netty.channel.DefaultMaxMessagesRecvByteBufAllocator.MaxMessageHandle.allocate(alloc)
+                    //   -> alloc.ioBuffer(guess())
+                    //     -> io.netty.buffer.AbstractByteBufAllocator.ioBuffer(int)
+                    //       -> io.netty.buffer.AbstractByteBufAllocator.directBuffer(int)
+                    //         -> public ByteBuf directBuffer(int initialCapacity, int maxCapacity) {
+                    //                if (initialCapacity == 0 && maxCapacity == 0) {
+                    //                   return emptyBuf;
+                    //                }
+                    //                validate(initialCapacity, maxCapacity);
+                    //                return newDirectBuffer(initialCapacity, maxCapacity);
+                    //            }
+                    //            -> io.netty.buffer.PooledByteBufAllocator.newDirectBuffer
+
                     allocHandle.lastBytesRead(doReadBytes(byteBuf));
                     if (allocHandle.lastBytesRead() <= 0) {
                         // nothing was read. release the buffer.
