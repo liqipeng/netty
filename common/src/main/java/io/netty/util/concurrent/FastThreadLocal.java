@@ -126,6 +126,8 @@ public class FastThreadLocal<V> {
 
     public FastThreadLocal() {
         index = InternalThreadLocalMap.nextVariableIndex();
+        // 每个 FastThreadLocal 都有一个唯一的 index 值 ， 那么跟ThreadLocal相比的话，ThreadLocal要 先获取一个hash值，然后再根据Entry数组的长度进行运算得到一个索引值，所以说这样也是Netty的这个FastThreadLocal效率更高的原因之一。
+        // ref: https://www.cnblogs.com/huxipeng/p/11299244.html
     }
 
     /**
