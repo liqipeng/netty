@@ -30,8 +30,8 @@ public abstract class ReferenceCountUpdater<T extends ReferenceCounted> {
      * Implementation notes:
      *
      * For the updated int field:
-     *   Even => "real" refcount is (refCnt >>> 1)
-     *   Odd  => "real" refcount is 0
+     *   Even 偶数 => "real" refcount is (refCnt >>> 1)
+     *   Odd  奇数 => "real" refcount is 0 说明引用数已经为0
      *
      * (x & y) appears to be surprisingly expensive relative to (x == y). Thus this class uses
      * a fast-path in some places for most common low values when checking for live (even) refcounts,
@@ -69,7 +69,7 @@ public abstract class ReferenceCountUpdater<T extends ReferenceCounted> {
     }
 
     private static int realRefCnt(int rawCnt) {
-        return rawCnt != 2 && rawCnt != 4 && (rawCnt & 1) != 0 ? 0 : rawCnt >>> 1;
+        return rawCnt != 2 && rawCnt != 4 && (rawCnt & 1) != 0 ? 0 : rawCnt >>> 1; // >>> 是无符号右移
     }
 
     /**
@@ -123,21 +123,30 @@ public abstract class ReferenceCountUpdater<T extends ReferenceCounted> {
     public final T retain(T instance, int increment) {
         // all changes to the raw count are 2x the "real" change - overflow is OK
         int rawIncrement = checkPositive(increment, "increment") << 1;
+        // 检查increment是否是正数
+        // 如果没问题则 << 1，即变为2倍得到rawIncrement
+        
         return retain0(instance, increment, rawIncrement);
     }
 
     // rawIncrement == increment << 1
+    // rawIncrement 是原增量值的2倍
     private T retain0(T instance, final int increment, final int rawIncrement) {
-        int oldRef = updater().getAndAdd(instance, rawIncrement);
+        int oldRef = updater().getAndAdd(instance, rawIncrement);// getAndAdd方法通过CAS方式更新getAndAdd后返回旧值
         if (oldRef != 2 && oldRef != 4 && (oldRef & 1) != 0) {
+            // ref存储的值是实际引用数的2倍，所以只要ref值是奇数说明引用为0
+            // 所以这里检查旧ref是否为奇数，如为奇数则说明已经是失效的
             throw new IllegalReferenceCountException(0, increment);
         }
         // don't pass 0!
         if ((oldRef <= 0 && oldRef + rawIncrement >= 0)
                 || (oldRef >= 0 && oldRef + rawIncrement < oldRef)) {
+            // oldRef <= 0 && oldRef + rawIncrement >= 0     说明oldRef是非正数并且加上增量后是非负数了，说明原来已经是负数
+            // oldRef >= 0 && oldRef + rawIncrement < oldRef 说明oldRef是非负数但是加上增量后就是负数了，所以说明溢出了
+            
             // overflow case
-            updater().getAndAdd(instance, -rawIncrement);
-            throw new IllegalReferenceCountException(realRefCnt(oldRef), increment);
+            updater().getAndAdd(instance, -rawIncrement);// 还原
+            throw new IllegalReferenceCountException(realRefCnt(oldRef), increment); // realRefCnt(oldRef) 通过oldRef得到当前实际引用计数
         }
         return instance;
     }
@@ -163,6 +172,7 @@ public abstract class ReferenceCountUpdater<T extends ReferenceCounted> {
         if (decrement < realCnt
                 // all changes to the raw count are 2x the "real" change - overflow is OK
                 && updater().compareAndSet(instance, rawCnt, rawCnt - (decrement << 1))) {
+            // 如果待减少的引用数小于当前剩余引用数并且
             return false;
         }
         return retryRelease0(instance, decrement);
